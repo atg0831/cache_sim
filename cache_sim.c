@@ -386,10 +386,10 @@ print_stat(RPL repl_policy)
 	printf("cache_size : %d\n", cache_size);
 	printf("block_size : %d\n", block_size);
 	printf("associativity : %d\n", assoc);
-	//if(repl_policy==0)
-//	printf("replacement policy : %s", LRU);
-//	else
-//		printf("replacement policy : %s", RAND);
+	if(repl_policy==0)
+	printf("replacement policy : %s", LRU);
+	else
+		printf("replacement policy : %s", RAND);
 
 	printf("cache accesses : %d\n", hit_count + miss_count);
 	printf("cache_hits : %d\n", hit_count);
