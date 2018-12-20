@@ -18,14 +18,11 @@ typedef struct _MEMACCESS {
 typedef struct _Cache {
 	int valid;
 	long long tag;
-	int data;
+	long long data;
 	int counter;
 }Cache;
 
-Cache **cache;
-int tag_bits;
-int index_bits;
-int byte_offset_bits;
+
 
 typedef enum _RPL { LRU = 0, RAND = 1 } RPL;
 
@@ -39,26 +36,36 @@ BOOL read_new_memaccess(MEMACCESS*);  //read new memory access from the memory t
 void init_cache(int cache_size, int block_size, int assoc, RPL repl_policy);
 
 //check if the memory access hits on the cache
-BOOL isHit(ADDR addr,RPL repl_policy);
+BOOL isHit(ADDR addr, RPL repl_policy, int assoc);
 
 //insert a cache block for a memory access
-ADDR insert_to_cache(ADDR addr, RPL repl_policy);
+ADDR insert_to_cache(ADDR addr, RPL repl_policy, int assoc);
 
 
 //print the simulation statistics
-print_stat(RPL rep_policy);
+void print_stat(int cache_size, int block_size, int assoc, RPL rep_policy);
+/*long long my_pow(int base, int exp)
+{
+	long long res = 1;
+	while(exp)
+		{
+		if (exp & 1)
+			res *= base;
+		exp >>= 1;
+		base *= base;
+		}
 
-int a;
-int b;
-int access_count;
+	return res;
+}
+*/
+
+
+Cache **cache;
+int tag_bits;
+int index_bits;
+int byte_offset_bits;
 int hit_count;
 int miss_count;
-int i = 0;
-int cache_size = 1024;
-int assoc = 4;
-int block_size = 32;
-RPL repl_policy = RAND;
-int rand_assoc_count = 0;
 long long add_tag;
 long long add_index;
 long long add_offset;
@@ -68,12 +75,15 @@ long long offset_mask;
 //main
 int main(int argc, char*argv[])
 {
-	
-	
+	int cache_size = 1024;
+	int assoc = 16;
+	int block_size = 32;
+	RPL repl_policy = RAND;
+	int i;
 	/*
 	*  Read through command-line arguments for options.
 	*/
-	
+	//srand((unsigned)time(NULL));
 	for (i = 1; i < argc; i++) {
 		if (argv[i][0] == '-') {
 			if (argv[i][1] == 's')
@@ -94,7 +104,10 @@ int main(int argc, char*argv[])
 				if (strcmp(argv[i + 1], "lru") == 0)
 					repl_policy = LRU;
 				else if (strcmp(argv[i + 1], "rand") == 0)
+				{
 					repl_policy = RAND;
+					srand((unsigned)time(NULL));
+				}
 				else
 				{
 					printf("unsupported replacement policy:%s\n", argv[i + 1]);
@@ -103,15 +116,15 @@ int main(int argc, char*argv[])
 			}
 		}
 	}
-	
+
 	/*
 	 * main body of cache simulator
 	*/
 
-	init_cache(cache_size, block_size, assoc,  repl_policy);
+	init_cache(cache_size, block_size, assoc, repl_policy);
 
 
-	rand_assoc_count = assoc;
+	//rand_assoc_count = assoc;
 	while (1)
 	{
 		MEMACCESS new_access;
@@ -122,28 +135,31 @@ int main(int argc, char*argv[])
 			break;
 
 
-		tag_mask = pow(2.0, tag_bits) - 1;
-		index_mask = pow(2.0, index_bits) - 1;
-		offset_mask = pow(2.0, byte_offset_bits) - 1;
+		tag_mask = (long long)pow(2, tag_bits) - 1;
+		index_mask = (long long)pow(2, index_bits) - 1;
+		offset_mask = (long long)pow(2, byte_offset_bits) - 1;
 
 		add_tag = (new_access.addr >> (index_bits + byte_offset_bits)) & tag_mask;
 		add_index = (new_access.addr >> (byte_offset_bits))&index_mask;
 
-		 add_offset = new_access.addr & offset_mask;
+		add_offset = new_access.addr & offset_mask;
 
-		
-			if(isHit(new_access.addr,repl_policy)==FALSE)   //check if the new memory access hit on the cache
-			{
-				insert_to_cache(new_access.addr,  repl_policy);  //if miss, insert a cache block for the memory access to the cache
-			}
-		
-			access_count = hit_count + miss_count;
-			a++;
+
+		if (isHit(new_access.addr, repl_policy, assoc) == FALSE)   //check if the new memory access hit on the cache
+		{
+			insert_to_cache(new_access.addr, repl_policy, assoc);  //if miss, insert a cache block for the memory access to the cache
+		}
+
+
+
 	}
 
 	// print statistics here
-	print_stat(repl_policy);
-	//	free(cache);
+	print_stat(cache_size, block_size, assoc, repl_policy);
+
+	for (i = 0; i < assoc; i++)
+		free(cache[i]);
+	free(cache);
 	return 0;
 }
 
@@ -184,7 +200,7 @@ BOOL read_new_memaccess(MEMACCESS* mem_access)
 		else
 			mem_access->is_read = FALSE;
 
-		b++;
+
 		return TRUE;
 	}
 	else
@@ -196,30 +212,27 @@ BOOL read_new_memaccess(MEMACCESS* mem_access)
 void init_cache(int cache_size, int block_size, int assoc, RPL repl_policy)
 {
 	int set_index;
-	
-
-
 	set_index = (cache_size / block_size) / assoc;
 
 
-	cache= (struct Cache **)malloc(sizeof(*cache)*set_index);
-	int i=0;
-	int j=0, k = 0;
+	cache = (Cache **)malloc(sizeof(*cache)*set_index);
+	int i = 0, j = 0, k = 0;
 
 	for (i = 0; i < set_index; i++)
-		cache[i] = (struct cache *)malloc(sizeof(**cache)*assoc);
-	
+		cache[i] = (Cache *)malloc(sizeof(**cache)*assoc);
 
-	i = 0;
+
+
 
 
 	if (repl_policy == 0) {
 		for (i = 0; i < set_index; i++) {
 			k = 0;
 			for (j = 0; j < assoc; j++) {
-				(cache[i][j]).counter = k++;
+				(cache[i][j]).counter = k++;	//LRU counter 0부터 assoc-1까지 각각 초기화
 
 				cache[i][j].valid = 0;
+				//cache[i][j].tag = 0;//valid는 전부 0으로 초기화
 			}
 
 		}
@@ -227,29 +240,29 @@ void init_cache(int cache_size, int block_size, int assoc, RPL repl_policy)
 	else
 	{
 		for (i = 0; i < set_index; i++) {
-			
+
 			for (j = 0; j < assoc; j++) {
 
-				cache[i][j].valid = 0;
+				cache[i][j].valid = 0;		//valid는 0으로
 			}
 
 		}
 
 	}
-	index_bits =log2(set_index);
-	byte_offset_bits = log2(block_size);
+	index_bits = (int)log2((double)set_index);
+	byte_offset_bits = (int)log2((double)block_size);
 	tag_bits = 64 - (index_bits + byte_offset_bits);
 
 	// if((cache[i][j]).vaild==0 &&(cache[i][j]).counter==0
 
 
-	
+
 }
 
 //check if the memory access hits on the cache
-BOOL isHit(ADDR addr,RPL repl_policy)
+BOOL isHit(ADDR addr, RPL repl_policy, int assoc)
 {
-	
+
 	int i, j;
 	if (repl_policy == 0) {
 		for (j = 0; j < assoc; j++)
@@ -276,7 +289,8 @@ BOOL isHit(ADDR addr,RPL repl_policy)
 
 			//else
 				//miss_count++;
-			else if ((j == assoc - 1) && (add_tag != cache[add_index][j].tag) || (cache[add_index][j].valid) == 0)	
+			//마지막 assoc다 돌았을때
+			else if ((j == assoc - 1) && (add_tag != cache[add_index][j].tag) || (cache[add_index][j].valid) == 0)
 			{
 
 				miss_count++;
@@ -288,6 +302,9 @@ BOOL isHit(ADDR addr,RPL repl_policy)
 
 		}
 	}
+
+
+	//RAND
 	else
 	{
 		for (j = 0; j < assoc; j++)
@@ -321,30 +338,32 @@ BOOL isHit(ADDR addr,RPL repl_policy)
 }
 
 //insert a cache block for a memory access
-ADDR insert_to_cache(ADDR addr, RPL repl_policy)
+ADDR insert_to_cache(ADDR addr, RPL repl_policy, int assoc)
 {
 
-	
+
 	//int initial_rand = FALSE;
-	srand(time(NULL));
+
 	int random;
-	int i, j=0;
-	/*long long tag_mask = pow(2.0, tag_bits) - 1;
-	long long index_mask = pow(2.0, index_bits) - 1;
-	long long offset_mask = pow(2.0, byte_offset_bits) - 1;
+	int i;
 
-	long long add_tag = (addr >> (index_bits + byte_offset_bits)) & tag_mask;
-	long long add_index = (addr >> (byte_offset_bits))&index_mask;
-
-	long long add_offset = addr & offset_mask;*/
 	if (repl_policy == 0) {
 		for (i = 0; i < assoc; i++)
 		{
-			if (cache[add_index][i].counter == 0 )
+			if (cache[add_index][i].counter == 0)
 			{
 				cache[add_index][i].valid = 1;
 				cache[add_index][i].tag = add_tag;
 				cache[add_index][i].counter = assoc - 1;
+
+				//	for (j = 0; j < assoc; j++) {
+
+					//	if (i != j)
+					//		(cache[add_index][j].counter)--;
+
+				//		//break;
+				//	}
+				//	break;
 			}
 			else
 				(cache[add_index][i].counter)--;
@@ -353,12 +372,12 @@ ADDR insert_to_cache(ADDR addr, RPL repl_policy)
 
 	else
 	{
-	
+
 		random = rand() % assoc;
 
-		if (rand_assoc_count > 0)
+		/*if (rand_assoc_count > 0)		//초기에 assoc갯수만큼 일단 채워넣고(valid 0이므로)
 		{
-			while (cache[add_index][random].valid != 0)
+			while (cache[add_index][random].valid != 0)	//비어있는 공간찾을때까지
 				random = rand() % assoc;
 
 			cache[add_index][random].tag = add_tag;
@@ -366,13 +385,14 @@ ADDR insert_to_cache(ADDR addr, RPL repl_policy)
 
 			rand_assoc_count--;
 		}
+		*/
+		//valid가 이제는 다 채워젔으니까 1이므로 random으로 replace
+		//else
+		//{
+		cache[add_index][random].tag = add_tag;
+		cache[add_index][random].valid = 1;
+		//}
 
-		else
-		{
-			cache[add_index][random].tag = add_tag;
-			cache[add_index][random].valid = 1;
-		}
-		
 
 	}
 	return TRUE;
@@ -380,21 +400,21 @@ ADDR insert_to_cache(ADDR addr, RPL repl_policy)
 
 
 //print the simulation statistics
-print_stat(RPL repl_policy)
+void print_stat(int cache_size, int block_size, int assoc, RPL repl_policy)
 {
 
 	printf("cache_size : %d\n", cache_size);
 	printf("block_size : %d\n", block_size);
 	printf("associativity : %d\n", assoc);
-	if(repl_policy==0)
-	printf("replacement policy : %s", LRU);
+	if (repl_policy == 0)
+		printf("replacement policy : %s\n", "LRU");
 	else
-		printf("replacement policy : %s", RAND);
+		printf("replacement policy : %s\n", "RAND");
 
 	printf("cache accesses : %d\n", hit_count + miss_count);
 	printf("cache_hits : %d\n", hit_count);
 	printf("cache_misses : %d\n", miss_count);
-	printf("cache_miss_rate : %.8lf\n",100 *((double)miss_count / (double)(hit_count + miss_count)));
+	printf("cache_miss_rate : %.2lf%\n", 100 * ((double)miss_count / (hit_count + miss_count)));
 
 
 
