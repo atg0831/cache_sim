@@ -229,10 +229,10 @@ void init_cache(int cache_size, int block_size, int assoc, RPL repl_policy)
 		for (i = 0; i < set_index; i++) {
 			k = 0;
 			for (j = 0; j < assoc; j++) {
-				(cache[i][j]).counter = k++;	//LRU counter 0ºÎÅÍ assoc-1±îÁö °¢°¢ ÃÊ±âÈ­
+				(cache[i][j]).counter = k++;	//LRU counter 0ë¶€í„° assoc-1ê¹Œì§€ ê°ê° ì´ˆê¸°í™”
 
 				cache[i][j].valid = 0;
-				//cache[i][j].tag = 0;//valid´Â ÀüºÎ 0À¸·Î ÃÊ±âÈ­
+				//cache[i][j].tag = 0;//validëŠ” ì „ë¶€ 0ìœ¼ë¡œ ì´ˆê¸°í™”
 			}
 
 		}
@@ -243,7 +243,7 @@ void init_cache(int cache_size, int block_size, int assoc, RPL repl_policy)
 
 			for (j = 0; j < assoc; j++) {
 
-				cache[i][j].valid = 0;		//valid´Â 0À¸·Î
+				cache[i][j].valid = 0;		//validëŠ” 0ìœ¼ë¡œ
 			}
 
 		}
@@ -289,7 +289,7 @@ BOOL isHit(ADDR addr, RPL repl_policy, int assoc)
 
 			//else
 				//miss_count++;
-			//¸¶Áö¸· assoc´Ù µ¹¾ÒÀ»¶§
+			//ë§ˆì§€ë§‰ assocë‹¤ ëŒì•˜ì„ë•Œ
 			else if ((j == assoc - 1) && (add_tag != cache[add_index][j].tag) || (cache[add_index][j].valid) == 0)
 			{
 
@@ -375,9 +375,9 @@ ADDR insert_to_cache(ADDR addr, RPL repl_policy, int assoc)
 
 		random = rand() % assoc;
 
-		/*if (rand_assoc_count > 0)		//ÃÊ±â¿¡ assoc°¹¼ö¸¸Å­ ÀÏ´Ü Ã¤¿ö³Ö°í(valid 0ÀÌ¹Ç·Î)
+		/*if (rand_assoc_count > 0)		//ì´ˆê¸°ì— assocê°¯ìˆ˜ë§Œí¼ ì¼ë‹¨ ì±„ì›Œë„£ê³ (valid 0ì´ë¯€ë¡œ)
 		{
-			while (cache[add_index][random].valid != 0)	//ºñ¾îÀÖ´Â °ø°£Ã£À»¶§±îÁö
+			while (cache[add_index][random].valid != 0)	//ë¹„ì–´ìˆëŠ” ê³µê°„ì°¾ì„ë•Œê¹Œì§€
 				random = rand() % assoc;
 
 			cache[add_index][random].tag = add_tag;
@@ -386,7 +386,7 @@ ADDR insert_to_cache(ADDR addr, RPL repl_policy, int assoc)
 			rand_assoc_count--;
 		}
 		*/
-		//valid°¡ ÀÌÁ¦´Â ´Ù Ã¤¿ö ’À¸´Ï±î 1ÀÌ¹Ç·Î randomÀ¸·Î replace
+		//validê°€ ì´ì œëŠ” ë‹¤ ì±„ì›ŒÂ’ìœ¼ë‹ˆê¹Œ 1ì´ë¯€ë¡œ randomìœ¼ë¡œ replace
 		//else
 		//{
 		cache[add_index][random].tag = add_tag;
@@ -403,8 +403,8 @@ ADDR insert_to_cache(ADDR addr, RPL repl_policy, int assoc)
 void print_stat(int cache_size, int block_size, int assoc, RPL repl_policy)
 {
 
-	printf("cache_size : %d\n", cache_size);
-	printf("block_size : %d\n", block_size);
+	printf("cache_size : %d B\n", cache_size);
+	printf("block_size : %d B\n", block_size);
 	printf("associativity : %d\n", assoc);
 	if (repl_policy == 0)
 		printf("replacement policy : %s\n", "LRU");
