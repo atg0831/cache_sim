@@ -1,6 +1,6 @@
 # cache_sim
 
-2018 2학기 컴퓨터 구조 수업
+2018 2학기 컴퓨터 구조 텀 프로젝트  
 n-way set associativity cache simulator 구현하고 Block size, Cache size, Associativity, Replacement Policy(lru, rand)에 따라 cache miss rate 값을 비교 분석하는 텀 프로젝트
 
 ---
